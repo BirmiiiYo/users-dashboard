@@ -84,7 +84,7 @@ export function UsersFilters() {
   const roleId = useId();
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:w-[430px]">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:w-[500px]">
       <Field label="Пол" htmlFor={genderId}>
         <Select
           id={genderId}
