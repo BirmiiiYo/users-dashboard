@@ -8,15 +8,28 @@ export interface CsvOptions {
   bom?: boolean;
 }
 
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+const FORMULA_START = /^[=@\t\r]/;
+/** Телефон или число со знаком: `+1 450-865-6061`, `+79001234567`, `-12` — значения, а не формулы. */
+const SIGNED_VALUE = /^[+-][\d\s\-().]+$/;
+
+/**
+ * Excel исполняет как формулу только `=`, `@`, tab/CR и «выражения» на `+`/`-`.
+ * Числа и телефоны со знаком к ним не относятся — их нельзя портить апострофом,
+ * иначе колонка «Телефон» в выгрузке выглядит сломанной (`'+1 450-...`).
+ */
+function isFormulaLike(raw: string): boolean {
+  if (FORMULA_START.test(raw)) return true;
+  if (/^[+-]/.test(raw)) return !SIGNED_VALUE.test(raw);
+  return false;
+}
 
 /**
  * Экранирует одно значение по RFC 4180 и нейтрализует CSV-инъекции
- * (ячейка, начинающаяся с `=`, `+`, `-`, `@`, выполнится в Excel как формула).
+ * (ячейка, начинающаяся с `=`/`+`/`-`/`@`, выполнится в Excel как формула).
  */
 export function escapeCsvCell(value: CsvValue, delimiter = ";"): string {
   const raw = value == null ? "" : String(value);
-  const safe = FORMULA_PREFIX.test(raw) ? `'${raw}` : raw;
+  const safe = isFormulaLike(raw) ? `'${raw}` : raw;
   const needsQuotes =
     safe.includes('"') || safe.includes("\n") || safe.includes("\r") || safe.includes(delimiter);
 

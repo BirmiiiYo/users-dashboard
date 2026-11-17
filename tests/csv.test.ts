@@ -20,9 +20,19 @@ describe("escapeCsvCell", () => {
 
   it("нейтрализует CSV-инъекции", () => {
     expect(escapeCsvCell("=1+1")).toBe("'=1+1");
-    expect(escapeCsvCell("+79001234567")).toBe("'+79001234567");
-    expect(escapeCsvCell("@user")).toBe("'@user");
-    expect(escapeCsvCell("-5")).toBe("'-5");
+    expect(escapeCsvCell("@SUM(A1)")).toBe("'@SUM(A1)");
+    expect(escapeCsvCell("+SUM(A1)")).toBe("'+SUM(A1)");
+    expect(escapeCsvCell("-2+3+cmd|' /C calc'!A0")).toBe("'-2+3+cmd|' /C calc'!A0");
+    expect(escapeCsvCell("\tcmd")).toBe("'\tcmd");
+  });
+
+  it("не портит телефоны и числа со знаком", () => {
+    // регрессия: раньше телефоны выгружались как `'+1 450-865-6061`
+    expect(escapeCsvCell("+1 450-865-6061")).toBe("+1 450-865-6061");
+    expect(escapeCsvCell("+79001234567")).toBe("+79001234567");
+    expect(escapeCsvCell("+1 (450) 865-6061")).toBe("+1 (450) 865-6061");
+    expect(escapeCsvCell("-5")).toBe("-5");
+    expect(escapeCsvCell(-5)).toBe("-5");
   });
 
   it("null и undefined превращаются в пустую строку", () => {
@@ -48,6 +58,16 @@ describe("toCsv", () => {
 
   it("пустой набор строк — пустая строка без хвоста", () => {
     expect(toCsv([])).toBe("");
+  });
+
+  it("телефон в выгрузке не получает апостроф (регрессия реального бага)", () => {
+    expect(toCsv([["Телефон"], ["+1 450-865-6061"]])).toBe("Телефон\r\n+1 450-865-6061\r\n");
+  });
+
+  it("злонамеренное значение в выгрузке остаётся нейтрализованным", () => {
+    expect(toCsv([["Имя"], ["=HYPERLINK(\"http://evil\")"]])).toContain(
+      "\"'=HYPERLINK(\"\"http://evil\"\")\"",
+    );
   });
 });
 
