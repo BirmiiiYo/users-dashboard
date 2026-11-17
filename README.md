@@ -1,5 +1,11 @@
 # Users Dashboard
 
+[![CI/CD](https://github.com/BirmiiiYo/users-dashboard/actions/workflows/deploy.yml/badge.svg)](https://github.com/BirmiiiYo/users-dashboard/actions/workflows/deploy.yml)
+[![Deploy](https://img.shields.io/badge/demo-live-000000?logo=vercel&logoColor=white)](https://users-dashboard.vercel.app)
+
+**Демо: https://users-dashboard.vercel.app** — деплой автоматический: пуш в `main` → GitHub Actions
+(`lint → typecheck → unit → e2e → build`) → `vercel deploy --prod`. Красный CI не доезжает до прода.
+
 Дашборд пользователей на данных [dummyjson.com/users](https://dummyjson.com/docs/users): таблица с поиском,
 фильтрами, сортировкой, пагинацией, карточкой пользователя и экспортом в CSV. Состояние экрана живёт в URL —
 ссылку можно скопировать и открыть с тем же результатом.
@@ -137,6 +143,25 @@ live-обновления или инвалидация по действию, �
 (все страницы), а не только видимая. Экранирование по RFC 4180, нейтрализация формул (`=`, `@`, `+SUM(...)`) —
 но телефоны и числа со знаком (`+1 450-865-6061`, `-5`) остаются как есть, иначе колонка «Телефон» выглядит
 сломанной. BOM для Excel и кириллицы. На клиенте не нужен ни `Blob`, ни `URL.createObjectURL` — значит, нечему течь.
+
+## CI/CD
+
+`.github/workflows/deploy.yml`:
+
+| Job | Что делает | Когда |
+| --- | --- | --- |
+| `quality` | `pnpm install --frozen-lockfile` → `lint` → `typecheck` → `test` (56) → `playwright test` (2) → `build` | каждый push в `main` и каждый PR |
+| `deploy` | `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod` | только push в `main`, только после зелёного `quality` |
+
+Прод-URL попадает в `GITHUB_STEP_SUMMARY` и в environment `production`. Секреты репозитория: `VERCEL_TOKEN`,
+`VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (значения — из `.vercel/project.json`, каталог в `.gitignore`).
+
+Два нюанса, которые важны на практике:
+
+- **e2e гоняется до `build`**: `next dev` (webServer в Playwright) и `next build` делят каталог `.next`, при обратном
+  порядке CI падает на «Could not find a production build».
+- **Версия pnpm не дублируется**: `pnpm/action-setup` читает `packageManager` из `package.json`, иначе падает с
+  `Multiple versions of pnpm specified`.
 
 ## Тесты
 
